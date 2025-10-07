@@ -1,0 +1,215 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}SocialSphere - Feed{% endblock %}
+
+{% block extra_head %}
+<style>
+  .container {
+    max-width: 700px;
+  }
+
+  .card-post {
+    margin-bottom: 20px;
+    border-radius: 16px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    padding: 15px;
+  }
+
+  .card-post img {
+    max-width: 100%;
+    border-radius: 12px;
+    margin-top: 10px;
+  }
+
+  .comment {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-top: 8px;
+  }
+
+  .comment strong {
+    color: #5a2e8c;
+  }
+
+  .comment-input {
+    background-color: #fff;
+    border-radius: 25px;
+    padding: 8px 15px;
+    border: 1px solid #e0e0e0;
+    width: 100%;
+    resize: none;
+  }
+
+  .btn-comment {
+    border-radius: 25px;
+    padding: 6px 20px;
+    background-color: #764ba2;
+    color: white;
+    border: none;
+  }
+
+  .btn-comment:hover {
+    background-color: #6a4094;
+  }
+
+  .btn-like {
+    background: none;
+    border: none;
+    color: #764ba2;
+    font-size: 1.2rem;
+  }
+
+  .btn-like:hover {
+    transform: scale(1.2);
+    color: #6a4094;
+  }
+
+  .liked {
+    color: #e63946;
+  }
+
+  .btn-post-submit {
+    background-color: #764ba2;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-post-submit:hover {
+    background-color: #6a4094;
+    transform: translateY(-2px);
+  }
+
+  .navbar .dropdown-toggle::after {
+    display: none;
+  }
+
+  #searchResults .search-result-item:hover {
+    background-color: #f0f2f5;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if user.is_authenticated %}
+<!-- Create Post -->
+<div class="card mb-4 p-4 post-form-card">
+  <h4 class="mb-3 text-center text-primary fw-bold">Create a Post</h4>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="post_submit" value="1">
+    <textarea class="form-control mb-3" name="content" rows="4" placeholder="What's on your mind?"></textarea>
+    <input type="file" class="form-control mb-3" name="image" accept="image/*">
+    <button type="submit" class="btn btn-post-submit w-100">Post</button>
+  </form>
+</div>
+{% endif %}
+
+{% for post in posts %}
+<div class="card card-post">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center">
+      {% if post.author.profile.profile_image %}
+      <img src="{{ post.author.profile.profile_image.url }}" class="rounded-circle me-2" width="40" height="40">
+      {% else %}
+      <img src="https://ui-avatars.com/api/?name={{ post.author.username }}" class="rounded-circle me-2" width="40"
+        height="40">
+      {% endif %}
+      <strong>{{ post.author.username }}</strong>
+    </div>
+
+    {% if request.user != post.author %}
+    <button class="btn btn-primary btn-follow" data-user-id="{{ post.author.id }}">
+      {% if request.user in post.author.profile.followers.all %}Unfollow{% else %}Follow{% endif %}
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Post Content -->
+  <p>{{ post.content }}</p>
+  {% if post.image %}
+  <img src="{{ post.image.url }}" alt="Post Image" class="mb-2">
+  {% endif %}
+
+  <!-- Likes and Comments -->
+  <div class="d-flex align-items-center mb-2">
+    <button class="btn-like me-2" id="like-btn-{{ post.id }}" onclick="toggleLike('{{ post.id }}')">
+      {% if post.liked_by_user %}
+      <i class="bi bi-heart-fill liked"></i>
+      {% else %}
+      <i class="bi bi-heart"></i>
+      {% endif %}
+    </button>
+    <span id="like-count-{{ post.id }}">{{ post.total_likes }}</span>
+
+    <button class="btn btn-sm btn-outline-primary ms-3" onclick="toggleCommentBox('{{ post.id }}')">
+      💬 {{ post.comments.count }}
+    </button>
+  </div>
+
+  <!-- Comment Box -->
+  <div id="comment-box-{{ post.id }}" style="display:none;">
+    {% for comment in post.comments.all %}
+    <div class="comment">
+      <p class="mb-1"><strong>{{ comment.author.username }}</strong>: {{ comment.content }}</p>
+      <small class="text-muted">{{ comment.created_at|date:"M d, Y H:i" }}</small>
+    </div>
+    {% empty %}
+    <p class="text-muted">No comments yet.</p>
+    {% endfor %}
+
+    {% if user.is_authenticated %}
+    <form method="post" class="mt-2 d-flex align-items-center">
+      {% csrf_token %}
+      <input type="hidden" name="comment_submit" value="1">
+      <input type="hidden" name="post_id" value="{{ post.id }}">
+      <textarea name="content" rows="1" class="comment-input me-2" placeholder="Write a comment..."></textarea>
+      <button type="submit" class="btn-comment">Send</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% empty %}
+<p class="text-center text-muted">No posts yet!</p>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Toggle comment box
+  function toggleCommentBox(postId) {
+    const box = document.getElementById(`comment-box-${postId}`);
+    box.style.display = (box.style.display === 'none') ? 'block' : 'none';
+  }
+
+  // Toggle like
+  function toggleLike(postId) {
+    fetch("{% url 'like_post' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `post_id=${postId}`
+    })
+      .then(res => res.json())
+      .then(data => {
+        const btn = document.getElementById(`like-btn-${postId}`);
+        const count = document.getElementById(`like-count-${postId}`);
+        btn.innerHTML = data.liked
+          ? '<i class="bi bi-heart-fill liked"></i>'
+          : '<i class="bi bi-heart"></i>';
+        count.textContent = data.total_likes;
+      });
+  }
+</script>
+{% endblock %}

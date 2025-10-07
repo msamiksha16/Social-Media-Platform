@@ -1,0 +1,129 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}{{ profile.user.username }} - Profile{% endblock %}
+
+{% block extra_head %}
+<style>
+  .container {
+    max-width: 700px;
+  }
+
+  .card-post {
+    margin-bottom: 20px;
+    border-radius: 16px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    padding: 15px;
+  }
+
+  .profile-img-container {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+  }
+
+  .profile-img {
+    border-radius: 50%;
+    object-fit: cover;
+    width: 100px;
+    height: 100px;
+  }
+
+  .edit-icon {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: #764ba2;
+    color: #fff;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    border: 2px solid white;
+    cursor: pointer;
+  }
+
+  .post-img {
+    max-width: 100%;
+    border-radius: 12px;
+    margin-top: 10px;
+  }
+
+  .btn-home {
+    background-color: #764ba2;
+    border: none;
+    color: #fff;
+    border-radius: 25px;
+    padding: 8px 20px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .btn-home:hover {
+    background-color: #6a4094;
+    color: #fff;
+  }
+
+  #profileImageInput {
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <div class="profile-img-container">
+    {% if request.user == profile.user %}
+    <form method="post" enctype="multipart/form-data" id="profileImageForm" action="{% url 'edit_profile_image' %}">
+      {% csrf_token %}
+      {% if profile.profile_image %}
+      <img id="profileImage" src="{{ profile.profile_image.url }}" alt="Profile Picture" class="profile-img"
+        onclick="document.getElementById('profileImageInput').click()">
+      {% else %}
+      <img id="profileImage" src="https://ui-avatars.com/api/?name={{ profile.user.username }}" alt="Profile Picture"
+        class="profile-img" onclick="document.getElementById('profileImageInput').click()">
+      {% endif %}
+      <span class="edit-icon" onclick="document.getElementById('profileImageInput').click()">+</span>
+      <input type="file" id="profileImageInput" name="profile_image" accept="image/*"
+        onchange="document.getElementById('profileImageForm').submit()">
+    </form>
+    {% else %}
+    {% if profile.profile_image %}
+    <img src="{{ profile.profile_image.url }}" alt="Profile Picture" class="profile-img">
+    {% else %}
+    <img src="https://ui-avatars.com/api/?name={{ profile.user.username }}" alt="Profile Picture" class="profile-img">
+    {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="ms-3">
+    <h3>{{ profile.user.username }}</h3>
+    <p>{{ profile.bio }}</p>
+    <div class="mb-2">
+      <span class="me-3"><strong id="followersCount">{{ profile.followers.count }}</strong> Followers</span>
+      <span><strong>{{ profile.user.following.count }}</strong> Following</span>
+    </div>
+
+    {% if request.user != profile.user %}
+    <button class="btn btn-primary btn-follow" data-user-id="{{ profile.user.id }}">
+      {% if request.user in profile.followers.all %}Unfollow{% else %}Follow{% endif %}
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<h4>Posts by {{ profile.user.username }}</h4>
+{% for post in posts %}
+<div class="card card-post">
+  <p>{{ post.content }}</p>
+  {% if post.image %}
+  <img src="{{ post.image.url }}" alt="Post Image" class="post-img">
+  {% endif %}
+</div>
+{% empty %}
+<p>No posts yet.</p>
+{% endfor %}
+{% endblock %}
